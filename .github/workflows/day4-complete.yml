@@ -75,7 +75,7 @@ jobs:
       - name: Load Docker image
         run: docker load -i juice-shop-image.tar
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: ghcr.io/aquasecurity/trivy:latest@master
         with:
           image-ref: 'juice-shop:latest'
           format: 'sarif'
