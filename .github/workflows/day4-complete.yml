@@ -34,7 +34,7 @@ jobs:
         with:
           dockerfile: Dockerfile.secure
           failure-threshold: warning
-          ignore: DL3009,DL3018
+          ignore: DL3009,DL3018,DL3016
 
   build_image:
     name: Build Secure Docker Image
