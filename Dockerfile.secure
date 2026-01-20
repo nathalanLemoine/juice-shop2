@@ -1,0 +1,41 @@
+# ===== STAGE 1 : BUILD =====
+FROM node:18-alpine AS builder
+LABEL maintainer="security@juice-shop.local"
+WORKDIR /app
+# Copier package.json uniquement (pour layer caching)
+COPY package*.json ./
+RUN apk add --no-cache git python3 make g++
+# Installer UNIQUEMENT les dépendances de production
+# --no-cache = ne pas sauvegarder le cache apt
+RUN npm install --only=production --ignore-scripts \ && npm cache clean --force
+# Copier code source
+COPY . .
+# Compiler / préparer app (si applicable)
+RUN npm run build:frontend || true
+# ===== STAGE 2 : RUNTIME (image MINIMALE) =====
+FROM node:18-alpine
+LABEL maintainer="security@juice-shop.local"
+LABEL version="1.0"
+LABEL description="OWASP Juice Shop - Security Hardened"
+WORKDIR /app
+# Copier UNIQUEMENT ce qui est nécessaire du stage build
+# Layer précédent (node_modules, code) NE vient que de builder
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app ./
+# Créer un utilisateur NON-ROOT avec UID spécifique
+RUN addgroup -g 1001 -S nodejs \
+&& adduser -S juiceuser -u 1001
+# Changer ownership des fichiers
+RUN chown -R juiceuser:nodejs /app
+# Passer à cet utilisateur (IMPORTANT)
+USER juiceuser
+# Port
+EXPOSE 3000
+# Health check (optionnel mais recommandé)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+CMD node healthcheck.js || exit 1
+# Entrypoint
+CMD ["npm", "start"]
+# Note de sécurité
+LABEL security.notes="This image runs as non-root user (juiceuser:1001). "
