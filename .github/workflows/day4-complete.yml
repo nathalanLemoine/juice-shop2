@@ -74,27 +74,34 @@ jobs:
           name: docker-image
       - name: Load Docker image
         run: docker load -i juice-shop-image.tar
+      
+      # CORRECTION 1 : On remet l'action officielle ici (pas l'image Docker)
       - name: Run Trivy vulnerability scanner
-        uses: ghcr.io/aquasecurity/trivy:latest@master
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'juice-shop:latest'
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
+          exit-code: '1' # Fail if CRITICAL/HIGH found (optionnel, peut être mis à 0 pour laisser passer)
+
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v2
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
           category: 'trivy'
+
+      # CORRECTION 2 : On utilise l'image GHCR ici pour éviter le Rate Limit
       - name: Generate Trivy report (table)
         if: always()
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-          aquasecurity/trivy image \
+          ghcr.io/aquasecurity/trivy:latest image \
           --format table \
           juice-shop:latest > trivy-report.txt
           cat trivy-report.txt
+
       - name: Check Trivy exit code
         if: failure()
         run: |
@@ -117,10 +124,11 @@ jobs:
           echo "VAULT_TOKEN length: ${#VAULT_TOKEN}"
       - name: Validate secrets pattern
         run: |
-          if grep -r "sk_live_" . --include="*.js" --include="*.json" | grep -v ".gitignore" | grep -v "node_modules"; then
+          # Ajout de l'exclusion des rapports pour éviter les faux positifs
+          if grep -r "sk_live_" . --include="*.js" --include="*.json" | grep -v ".gitignore" | grep -v "node_modules" | grep -v "report"; then
             echo "Found hardcoded Stripe key!"
           fi
-          if grep -r "AKIA" . --include="*.js" --include="*.json" | grep -v ".gitignore" | grep -v "node_modules"; then
+          if grep -r "AKIA" . --include="*.js" --include="*.json" | grep -v ".gitignore" | grep -v "node_modules" | grep -v "report"; then
             echo "Found hardcoded AWS key!"
           fi
           echo "No hardcoded secrets detected in code patterns"
