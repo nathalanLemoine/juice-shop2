@@ -1,0 +1,64 @@
+name: DevSecOps Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  security-scan:
+    runs-on: self-hosted  # <--- IMPORTANT : On utilise ton runner local
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v3
+
+      - name: Création du dossier metrics local (workspace)
+        run: mkdir -p metrics
+
+      # --- SCANS DE SÉCURITÉ (Reste inchangé) ---
+
+      - name: Gitleaks Scan
+        run: |
+          # On utilise Docker pour ne pas avoir à installer gitleaks sur la machine
+          docker run --rm -v ${PWD}:/path zricethezav/gitleaks:latest detect --source="/path" --report-path="/path/metrics/gitleaks_report.json" --report-format=json || true
+
+      - name: Trivy FS Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'json'
+          output: 'metrics/trivy_report.json'
+          severity: 'CRITICAL,HIGH'
+        continue-on-error: true
+
+      - name: Generate Pipeline Status
+        if: always()
+        run: |
+          STATUS="success"
+          if grep -q "CRITICAL" metrics/trivy_report.json; then
+            STATUS="failure"
+          fi
+          echo "{\"status\": \"$STATUS\", \"branch\": \"${{ github.ref_name }}\"}" > metrics/pipeline_status.json
+
+      # --- C'EST ICI QUE ÇA CHANGE ---
+      
+      - name: Deploy Metrics to Monitoring (Local Copy)
+        if: always()
+        run: |
+          echo "Copie des rapports vers le dossier du Jour 6..."
+          
+          # Copie directe du workspace actuel (Jour 4) vers le dossier monitoring (Jour 6)
+          cp -f metrics/*.json /home/debian/jour6/metrics/
+          
+          # Vérification (optionnelle, pour les logs)
+          ls -l /home/debian/jour6/metrics/
+
+      # --- Notifications ---
+      
+      - name: Discord Notification
+        if: always()
+        uses: Ilshidur/action-discord@master
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        with:
+          args: 'Pipeline terminé. Métriques copiées dans ~/jour6/metrics.'
