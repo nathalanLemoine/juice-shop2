@@ -28,7 +28,7 @@ jobs:
           scan-ref: '.'
           format: 'json'
           output: 'metrics/trivy_report.json'
-          severity: 'CRITICAL,HIGH'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
         continue-on-error: false
 
       - name: Generate Pipeline Status
