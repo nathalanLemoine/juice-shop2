@@ -29,7 +29,7 @@ jobs:
           format: 'json'
           output: 'metrics/trivy_report.json'
           severity: 'CRITICAL,HIGH'
-        continue-on-error: true
+        continue-on-error: false
 
       - name: Generate Pipeline Status
         if: always()
