@@ -13,19 +13,23 @@ jobs:
           echo "VAULT_TOKEN=github-token-12345" >> $GITHUB_ENV
           echo "VAULT_ADDR=https://vault.example.com" >> $GITHUB_ENV
 
-      - name: Login to Vault
+      - name: Login to Vault (SIMULATION)
         run: |
-          # Exemple avec GitHub OIDC (avancé)
-          # Note : J'ai recollé le JSON qui était cassé sur deux lignes
-          curl -X POST $VAULT_ADDR/v1/auth/jwt/login \
-            -d '{"jwt":"${{ secrets.GITHUB_TOKEN }}","role":"github-actions"}'
+          # On remplace la vraie commande curl par un echo pour la simulation
+          echo "Simulating login request to $VAULT_ADDR..."
+          echo "Authenticating with GitHub Token..."
+          # La commande suivante est commentée car elle échouerait sans vrai serveur
+          # curl -X POST $VAULT_ADDR/v1/auth/jwt/login -d '...'
 
-      - name: Fetch Secrets
+      - name: Fetch Secrets (SIMULATION)
         run: |
-          # Récupérer secrets pour deployment
-          curl -H "X-Vault-Token: $VAULT_TOKEN" \
-            $VAULT_ADDR/v1/secret/data/juice-shop/prod \
-            | jq '.data.data'
+          echo "Simulating secret retrieval..."
+          
+          # Au lieu d'appeler le serveur, on génère un faux JSON pour montrer que ça marche
+          echo '{"data": {"data": {"api_key": "SIMULATED_SECRET_KEY_123"}}}' | jq '.data.data'
+          
+          # La vraie commande est commentée :
+          # curl -H "X-Vault-Token: $VAULT_TOKEN" $VAULT_ADDR/...
 
       - name: Deploy
         run: echo "Deploying with secrets from Vault..."
